@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>아키워크에서 같이 일해요</title>
+<meta property="og:title" content="아키워크에서 같이 일해요">
+<style>
+:root { --wall:#E9E3E1; --line:#DDD5D2; --note:#FFFDF8; --tape:rgba(232,220,208,.95); --text:#3F3533; --muted:#776C6A; --primary:#C52E14; --surface:#fff; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; color: var(--text); background: repeating-linear-gradient(var(--wall) 0 14px, var(--line) 14px 16px); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; -webkit-text-size-adjust: 100%; }
+main { min-height: 100%; max-width: 480px; margin: 0 auto; padding: 24px 24px max(40px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.middle { flex: 1; display: flex; align-items: center; justify-content: center; }
+.note { position: relative; width: 100%; max-width: 326px; padding: 28px 22px 24px; border-radius: 6px; background: var(--note); transform: rotate(-1.5deg); box-shadow: 0 6px 16px rgba(63,53,51,.16); text-align: center; }
+.note::before { content: ""; position: absolute; left: 50%; top: -10px; width: 64px; height: 20px; margin-left: -32px; background: var(--tape); transform: rotate(3deg); }
+.avatar { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #7D6491; color: #fff; font-weight: 700; font-size: 24px; }
+h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 800; letter-spacing: -.6px; overflow-wrap: anywhere; white-space: pre-line; }
+.buttons { display: flex; flex-direction: column; gap: 10px; }
+a.button { height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: 600; text-decoration: none; color: var(--text); background: var(--surface); }
+a.button.primary { background: var(--primary); color: #fff; }
+a.button:active { opacity: .7; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="middle"><div class="note"><div class="avatar" id="avatar" hidden></div><h1 id="title" aria-live="polite">&nbsp;</h1></div></div>
+  <div class="buttons">
+    <a class="button primary" id="open" hidden></a>
+    <a class="button" id="store" href="https://apps.apple.com/app/id6829126505"></a>
+  </div>
+</main>
+<script>
+// 친구 초대 페이지 (앱 시안 GreetCommon, 2026-11-24). 링크 값으로 초대한 사람 닉네임만 물어보고, 아무것도 저장하지 않는다.
+// 키는 앱에도 들어 있는 공개 키다. 서버가 이 페이지에 열어 준 것은 together_invite_peek 하나(닉네임 · 쓸 수 있는지).
+(function () {
+  var URL_ = 'https://ucqlnmaajxjmsohpikrc.supabase.co', KEY = 'sb_publishable__CDxZn3xNm0jdTVY4O6xNQ_pg-QMu3u';
+  var ko = (navigator.language || 'ko').toLowerCase().indexOf('ko') === 0;
+  var $ = function (id) { return document.getElementById(id); };
+  var T = ko
+    ? { wants: function (n) { return n + '님이\n같이 일하자고 해요'; }, plain: '아키워크에서\n같이 일해요', closed: '지난 링크예요\n새 링크를 받아 주세요', open: '앱에서 열기', store: 'App Store에서 받기' }
+    : { wants: function (n) { return n + ' wants\nto work together'; }, plain: 'Let’s work together\non Akiiwork', closed: 'This link has expired\nAsk for a new one', open: 'Open in app', store: 'Get it on the App Store' };
+  document.documentElement.lang = ko ? 'ko' : 'en';
+  $('store').textContent = T.store;
+  var token = new URLSearchParams(location.search).get('t') || '';
+  var valid = /^[0-9a-f]{32}$/.test(token);
+  function show(title, canOpen, nickname) {
+    $('title').textContent = title;
+    if (nickname) {
+      var COLORS = ['#A35A46', '#66764F', '#7D6491', '#52717D', '#8C6A3F', '#8F5363'], hash = 0;
+      Array.from(nickname).forEach(function (ch) { hash = (hash * 31 + ch.charCodeAt(0)) >>> 0; });
+      $('avatar').textContent = Array.from(nickname)[0].toUpperCase();
+      $('avatar').style.background = COLORS[hash % COLORS.length];
+      $('avatar').hidden = false;
+    }
+    if (canOpen) {
+      $('open').textContent = T.open;
+      $('open').href = 'akiiwork://invite?t=' + token;
+      $('open').hidden = false;
+    }
+  }
+  if (!valid) { show(T.closed, false); return; }
+  fetch(URL_ + '/rest/v1/rpc/together_invite_peek', {
+    method: 'POST',
+    headers: { apikey: KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_token: token })
+  }).then(function (r) { if (!r.ok) throw new Error(); return r.json(); }).then(function (rows) {
+    var row = rows && rows[0];
+    if (row && row.state === 'ok' && row.nickname) show(T.wants(row.nickname), true, row.nickname);
+    else show(T.closed, false);
+  }).catch(function () { show(T.plain, true); }); // 이름을 못 물어봐도 앱은 열 수 있게
+})();
+</script>
+</body>
+</html>
